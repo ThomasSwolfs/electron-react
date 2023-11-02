@@ -15,6 +15,12 @@ import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 
+
+const recorder = require('node-record-lpcm16');
+
+const fs = require('fs');
+let recording = null;
+
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -30,6 +36,8 @@ ipcMain.on('ipc-example', async (event, arg) => {
   console.log(msgTemplate(arg));
   event.reply('ipc-example', msgTemplate('pong'));
 });
+
+
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
@@ -135,3 +143,44 @@ app
     });
   })
   .catch(console.log);
+
+
+  ipcMain.on('recording', async (event, arg) => {
+    console.log("message inbound");
+    const record = (action: string) => {
+      const file = fs.createWriteStream('test.wav', { encoding: 'binary' })
+      console.log(action);
+      if (action[0] === 'start') {
+        recording = recorder.record({
+          sampleRate: 44100
+        });
+        recording.stream().pipe(file);
+      } else {
+        console.log("stop");
+        recording.stop();
+      }
+
+    };
+
+    record(arg);
+
+  });
+  
+
+  ipcMain.on('start-recording', (event) => {
+    const file = fs.createWriteStream('test.wav', { encoding: 'binary' })
+  
+    recording = recorder.record({
+      sampleRate: 44100
+    });
+    recording.stream().pipe(file);
+  
+  
+  
+    event.reply('recording-started');
+  });
+  
+  ipcMain.on('stop-recording', () => {
+    recording.stop();
+  
+  });
